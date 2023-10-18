@@ -20,6 +20,10 @@ ARG HEADERS_MORE_VERSION=0.34
 # https://github.com/leev/ngx_http_geoip2_module/releases
 ARG GEOIP2_VERSION=3.4
 
+# NGINX UID / GID
+ARG NGINX_USER_UID=100
+ARG NGINX_GROUP_GID=101
+
 # https://nginx.org/en/docs/http/ngx_http_v3_module.html
 ARG CONFIG="\
 		--build=quic-$NGINX_COMMIT-boringssl-$BORINGSSL_COMMIT \
@@ -82,6 +86,8 @@ ARG NGX_BROTLI_COMMIT
 ARG HEADERS_MORE_VERSION
 ARG NJS_COMMIT
 ARG GEOIP2_VERSION
+ARG NGINX_USER_UID
+ARG NGINX_GROUP_GID
 ARG CONFIG
 
 RUN \
@@ -202,6 +208,8 @@ RUN \
 FROM alpine:3.17
 ARG NGINX_VERSION
 ARG NGINX_COMMIT
+ARG NGINX_USER_UID
+ARG NGINX_GROUP_GID
 
 ENV NGINX_VERSION $NGINX_VERSION
 ENV NGINX_COMMIT $NGINX_COMMIT
@@ -218,8 +226,8 @@ COPY --from=base /usr/sbin/njs /usr/sbin/njs
 
 # hadolint ignore=SC2046
 RUN \
-	addgroup --gid 101 -S nginx \
-	&& adduser --uid 100 -D -S -h /var/cache/nginx -s /sbin/nologin -G nginx nginx \
+	addgroup --gid $NGINX_GROUP_GID -S nginx \
+	&& adduser --uid $NGINX_USER_UID -D -S -h /var/cache/nginx -s /sbin/nologin -G nginx nginx \
 	&& apk add --no-cache --virtual .nginx-rundeps tzdata $(cat /tmp/runDeps.txt) \
 	&& rm /tmp/runDeps.txt \
 	&& ln -s /usr/lib/nginx/modules /etc/nginx/modules \
