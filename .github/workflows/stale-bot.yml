@@ -1,0 +1,32 @@
+name: 'Close stale issues and PRs'
+on:
+  schedule:
+    - cron: '0 1,13 * * *'
+
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    steps:
+      # https://github.com/actions/stale
+      - uses: actions/stale@v9
+        with:
+          # global config
+          operations-per-run: 300
+          days-before-stale: 30
+          days-before-close: 90
+          # issue specific config
+          stale-issue-label: 'wontfix'
+          stale-issue-message: >
+            This issue has been automatically marked as stale because it has not had
+            recent activity. It will be closed if no further activity occurs. Thank you
+            for your contributions.
+          close-issue-message: 'Closing this due to being stale.'
+          # pull request specific config
+          exempt-pr-labels: 'dependencies'
+          stale-pr-label: 'wontfix'
+          stale-pr-message: >
+            This pull request has been automatically marked as stale because it has not had
+            recent activity. It will be closed if no further activity occurs. Thank you
+            for your contributions.
+          close-pr-message: 'Closing this due to being stale.'
+          delete-branch: true
