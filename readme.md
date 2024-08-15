@@ -22,7 +22,7 @@ docker pull ghcr.io/macbre/nginx-http3:latest
 * [`headers-more-nginx-module`](https://github.com/openresty/headers-more-nginx-module#readme) - sets and clears HTTP request and response headers
 * [`ngx_brotli`](https://github.com/google/ngx_brotli#configuration-directives) - adds [brotli response compression](https://datatracker.ietf.org/doc/html/rfc7932)
 * [`ngx_http_geoip2_module`](https://github.com/leev/ngx_http_geoip2_module#download-maxmind-geolite2-database-optional) - creates variables with values from the maxmind geoip2 databases based on the client IP
-* [`njs` module](https://nginx.org/en/docs/njs/) - a subset of the JavaScript language that allows extending nginx functionality
+* [`njs` module](https://nginx.org/en/docs/njs/) - a subset of the JavaScript language that allows extending nginx functionality ([GitHub repository](https://github.com/nginx/njs))
 
 ```
 $ docker run -it macbre/nginx-http3 nginx -V
@@ -84,7 +84,7 @@ configure arguments:
 	--add-dynamic-module=/usr/src/ngx_http_geoip2_module
 
 $ docker run -it macbre/nginx-http3 njs -v
-0.8.4
+0.8.5
 ```
 
 ## SSL Grade A+ handling
