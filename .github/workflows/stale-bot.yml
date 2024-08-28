@@ -21,7 +21,12 @@ jobs:
             recent activity. It will be closed if no further activity occurs. Thank you
             for your contributions.
           close-issue-message: 'Closing this due to being stale.'
+          
+          # https://github.com/actions/stale?tab=readme-ov-file#exempt-issue-labels
+          exempt-issue-labels: 'keep-open'
+
           # pull request specific config
+
           exempt-pr-labels: 'dependencies'
           stale-pr-label: 'wontfix'
           stale-pr-message: >
