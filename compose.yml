@@ -1,0 +1,25 @@
+services:
+  nginx:
+    image: braisenly/nginx-http3
+    container_name: nginx
+    ports:
+      - "8888:80"
+      - "8889:443/tcp"
+      - "8889:443/udp"
+    volumes:
+      - ./tests:/static:ro
+      - ./tests/modules.conf:/etc/nginx/main.d/modules.conf:ro
+      - ./tests/perl_rewrite.conf:/etc/nginx/conf.d/perl_rewrite.conf:ro
+      - ./tests/static.conf:/etc/nginx/conf.d/static.conf:ro
+      - ./tests/https.conf:/etc/nginx/conf.d/https.conf:ro
+      - ./tests/njs.conf:/etc/nginx/conf.d/njs.conf:ro
+      - ./tests/njs:/opt/njs:ro
+      - ./tests/localhost.crt:/etc/nginx/ssl/localhost.crt:ro
+      - ./tests/localhost.key:/etc/nginx/ssl/localhost.key:ro
+    restart: unless-stopped
+    networks:
+      - web_network
+
+networks:
+  web_network:
+    driver: bridge
