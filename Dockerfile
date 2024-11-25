@@ -20,6 +20,9 @@ ARG HEADERS_MORE_VERSION=0.37
 # https://github.com/leev/ngx_http_geoip2_module/releases
 ARG GEOIP2_VERSION=3.4
 
+# https://github.com/tokers/zstd-nginx-module/releases
+ARG ZSTD_VERSION=0.1.1
+
 # NGINX UID / GID
 ARG NGINX_USER_UID=100
 ARG NGINX_GROUP_GID=101
@@ -77,6 +80,7 @@ ARG CONFIG="\
 		--add-module=/usr/src/ngx_brotli \
 		--add-module=/usr/src/headers-more-nginx-module-$HEADERS_MORE_VERSION \
 		--add-module=/usr/src/njs/nginx \
+		--add-module=/usr/src/zstd \
 		--add-dynamic-module=/usr/src/ngx_http_geoip2_module \
 	"
 
@@ -88,6 +92,7 @@ ARG NGX_BROTLI_COMMIT
 ARG HEADERS_MORE_VERSION
 ARG NJS_COMMIT
 ARG GEOIP2_VERSION
+ARG ZSTD_VERSION
 ARG NGINX_USER_UID
 ARG NGINX_GROUP_GID
 ARG CONFIG
@@ -95,28 +100,28 @@ ARG CONFIG
 RUN \
 	apk add --no-cache --virtual .build-deps \
 		gcc \
-		libc-dev \
-		make \
-		musl-dev \
-		go \
-		ninja \
-		mercurial \
-		openssl-dev \
-		pcre-dev \
-		zlib-dev \
-		linux-headers \
-		gnupg \
-		libxslt-dev \
 		gd-dev \
 		geoip-dev \
+		gnupg \
+		go \
+		libc-dev \
+		libxslt-dev \
+		linux-headers \
+		make \
+		mercurial \
+		musl-dev \
+		ninja \
+		openssl-dev \
+		pcre-dev \
 		perl-dev \
+		zlib-dev \
 	&& apk add --no-cache --virtual .brotli-build-deps \
 		autoconf \
-		libtool \
 		automake \
-		git \
-		g++ \
 		cmake \
+		g++ \
+		git \
+		libtool \
 	&& apk add --no-cache --virtual .geoip2-build-deps \
 		libmaxminddb-dev \
 	&& apk add --no-cache --virtual .njs-build-deps \
@@ -127,6 +132,8 @@ RUN \
 		pcre-dev \
 		readline-dev \
 		zlib-dev \
+	&& apk add --no-cache --virtual .zstd-build-deps \
+		zstd-dev \
 	&& git config --global init.defaultBranch master
 
 WORKDIR /usr/src/
@@ -172,6 +179,10 @@ RUN \
   && git clone --depth 1 --branch ${GEOIP2_VERSION} https://github.com/leev/ngx_http_geoip2_module /usr/src/ngx_http_geoip2_module
 
 RUN \
+  echo "Downloading zstd-nginx-module ..." \
+  && git clone --depth 1 --branch ${ZSTD_VERSION} https://github.com/tokers/zstd-nginx-module.git /usr/src/zstd
+
+RUN \
   echo "Cloning and configuring quickjs ..." \
   && cd /usr/src \
   && git clone https://github.com/bellard/quickjs quickjs \
@@ -197,9 +208,9 @@ ARG LD_OPT='-Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -flto=auto -L 
 RUN \
   echo "Building nginx ..." \
   && mkdir -p /var/run/nginx/ \
-	&& cd /usr/src/nginx-$NGINX_VERSION \
-	&& ./auto/configure $CONFIG --with-cc-opt="$CC_OPT" --with-ld-opt="$LD_OPT" \
-	&& make -j"$(getconf _NPROCESSORS_ONLN)"
+  && cd /usr/src/nginx-$NGINX_VERSION \
+  && ./auto/configure $CONFIG --with-cc-opt="$CC_OPT" --with-ld-opt="$LD_OPT" \
+  && make -j"$(getconf _NPROCESSORS_ONLN)"
 
 RUN \
 	cd /usr/src/nginx-$NGINX_VERSION \
