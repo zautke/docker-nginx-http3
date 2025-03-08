@@ -136,6 +136,11 @@ RUN \
 	zstd-dev \
 	&& git config --global init.defaultBranch master
 
+
+
+
+
+
 WORKDIR /usr/src/
 
 RUN \
@@ -237,6 +242,20 @@ RUN \
 	| sort -u > /tmp/runDeps.txt
 RUN cat /tmp/runDeps.txt
 
+########################
+
+FROM alpine:3.20 AS certbot-stage
+# Install Certbot, its Nginx plugin, and any required dependencies.
+RUN apk update && \
+	apk add --no-cache certbot certbot-nginx && \
+	# Create a directory for HTTP challenge webroot (if using webroot method)
+	mkdir -p /var/www/certbot
+
+# Optionally, expose volumes for certificate storage and configuration.
+#VOLUME ["/etc/letsencrypt", "/var/lib/letsencrypt"]
+
+#######################
+
 FROM alpine:3.20
 ARG NGINX_VERSION
 ARG NGINX_COMMIT
@@ -245,6 +264,14 @@ ARG NGINX_GROUP_GID
 
 ENV NGINX_VERSION=$NGINX_VERSION
 ENV NGINX_COMMIT=$NGINX_COMMIT
+
+RUN \
+	apk add --no-cache --virtual .xtra-build-deps \
+	bash \
+	bash-completion \
+	sudo \
+	vim \
+	net-tools
 
 COPY --from=base /var/run/nginx/ /var/run/nginx/
 COPY --from=base /tmp/runDeps.txt /tmp/runDeps.txt
@@ -256,6 +283,16 @@ COPY --from=base /usr/bin/envsubst /usr/local/bin/envsubst
 COPY --from=base /etc/ssl/dhparam.pem /etc/ssl/dhparam.pem
 
 COPY --from=base /usr/sbin/njs /usr/sbin/njs
+
+# Copy the Certbot installation (binaries and configuration) from certbot-stage.
+COPY --from=certbot-stage /usr/bin/certbot /usr/bin/certbot
+COPY --from=certbot-stage /var/www/certbot /var/www/certbot
+# Optionally, if you want to seed initial configuration:
+#COPY --from=certbot-stage /etc/letsencrypt /etc/letsencrypt
+#COPY --from=certbot-stage /var/lib/letsencrypt /var/lib/letsencrypt
+
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
 
 # hadolint ignore=SC2046
 RUN \
@@ -293,4 +330,5 @@ RUN \
 	/var/run/nginx/
 
 USER nginx
-CMD ["nginx", "-g", "daemon off;"]
+#CMD ["nginx", "-g", "daemon off;"]
+CMD ["/usr/local/bin/start.sh"]
