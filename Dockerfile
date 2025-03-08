@@ -329,6 +329,25 @@ RUN \
 	chown -R --verbose nginx:nginx \
 	/var/run/nginx/
 
+# Install additional packages
+RUN apk add --no-cache \
+	vim \
+	curl \
+	bash \
+	bash-completion \
+	certbot \
+	certbot-nginx \
+	net-tools \
+	sudo \
+	python3 \
+	py3-pip \
+	&& pip3 install --no-cache-dir certbot-dns-godaddy
+
+# Copy DNS scripts
+COPY godaddy-dns-auth.sh /usr/local/bin/
+COPY godaddy-dns-cleanup.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/godaddy-dns-*
+
 USER nginx
 #CMD ["nginx", "-g", "daemon off;"]
 CMD ["/usr/local/bin/start.sh"]

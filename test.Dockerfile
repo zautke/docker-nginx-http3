@@ -374,7 +374,13 @@ RUN \
 	/usr/local/bin/start.sh \
 	/etc/periodic/weekly/certbot-renew
 
-# Change the CMD to use our new script
+# Install additional packages
+RUN apk add --no-cache \
+	vim \
+	bash-completion \
+	net-tools \
+	sudo
+
 USER nginx
 CMD ["/usr/local/bin/start.sh"]
 
