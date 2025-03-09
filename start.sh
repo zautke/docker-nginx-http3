@@ -5,17 +5,23 @@ set -e
 WEBROOT="/var/www/certbot"
 mkdir -p "$WEBROOT"
 
-# Attempt initial certificate issuance if CERTBOT_DOMAIN and CERTBOT_EMAIL are provided.
-if [ -n "$CERTBOT_DOMAIN" ] && [ -n "$CERTBOT_EMAIL" ]; then
-    echo "Attempting to obtain certificate for domain: $CERTBOT_DOMAIN"
+# Attempt initial certificate issuance if CERTBOT_DOMAINS and CERTBOT_EMAIL are provided.
+if [ -n "$CERTBOT_DOMAINS" ] && [ -n "$CERTBOT_EMAIL" ]; then
+    echo "Attempting to obtain certificate for domains: $CERTBOT_DOMAINS"
+    # Convert space-separated domains into -d arguments
+    DOMAIN_ARGS=""
+    for domain in $CERTBOT_DOMAINS; do
+        DOMAIN_ARGS="$DOMAIN_ARGS -d $domain"
+    done
+
     certbot certonly \
         --non-interactive \
         --agree-tos \
         --email "$CERTBOT_EMAIL" \
         --webroot -w "$WEBROOT" \
-        -d "$CERTBOT_DOMAIN" || echo "Warning: initial certificate issuance failed."
+        $DOMAIN_ARGS || echo "Warning: initial certificate issuance failed."
 else
-    echo "CERTBOT_DOMAIN and/or CERTBOT_EMAIL not set. Skipping initial certificate issuance."
+    echo "CERTBOT_DOMAINS and/or CERTBOT_EMAIL not set. Skipping initial certificate issuance."
 fi
 
 # Set up a cron job to renew certificates every 12 hours.
