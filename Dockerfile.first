@@ -136,6 +136,11 @@ RUN \
 	zstd-dev \
 	&& git config --global init.defaultBranch master
 
+
+
+
+
+
 WORKDIR /usr/src/
 
 RUN \
@@ -235,6 +240,21 @@ RUN \
 	| sort -u \
 	| xargs -r apk info --installed \
 	| sort -u > /tmp/runDeps.txt
+RUN cat /tmp/runDeps.txt
+
+########################
+
+FROM alpine:3.20 AS certbot-stage
+# Install Certbot, its Nginx plugin, and any required dependencies.
+RUN apk update && \
+	apk add --no-cache certbot certbot-nginx && \
+	# Create a directory for HTTP challenge webroot (if using webroot method)
+	mkdir -p /var/www/certbot
+
+# Optionally, expose volumes for certificate storage and configuration.
+#VOLUME ["/etc/letsencrypt", "/var/lib/letsencrypt"]
+
+#######################
 
 FROM alpine:3.20
 ARG NGINX_VERSION
@@ -246,17 +266,14 @@ ENV NGINX_VERSION=$NGINX_VERSION
 ENV NGINX_COMMIT=$NGINX_COMMIT
 
 RUN \
-	apk add --no-cache \
+	apk add --no-cache --virtual .xtra-build-deps \
+	curl \
+	wget \
 	bash \
 	bash-completion \
-	busybox-suid \
-	certbot \
-	certbot-nginx \
-	net-tools \
 	sudo \
 	vim \
-	# Add crond for certificate renewal
-	dcron
+	net-tools
 
 COPY --from=base /var/run/nginx/ /var/run/nginx/
 COPY --from=base /tmp/runDeps.txt /tmp/runDeps.txt
@@ -269,6 +286,16 @@ COPY --from=base /etc/ssl/dhparam.pem /etc/ssl/dhparam.pem
 
 COPY --from=base /usr/sbin/njs /usr/sbin/njs
 
+# Copy the Certbot installation (binaries and configuration) from certbot-stage.
+COPY --from=certbot-stage /usr/bin/certbot /usr/bin/certbot
+COPY --from=certbot-stage /var/www/certbot /var/www/certbot
+# Optionally, if you want to seed initial configuration:
+#COPY --from=certbot-stage /etc/letsencrypt /etc/letsencrypt
+#COPY --from=certbot-stage /var/lib/letsencrypt /var/lib/letsencrypt
+
+COPY start.sh /usr/local/bin/start.sh
+RUN chmod +x /usr/local/bin/start.sh
+
 # hadolint ignore=SC2046
 RUN \
 	addgroup --gid $NGINX_GROUP_GID -S nginx \
@@ -280,73 +307,10 @@ RUN \
 	&& mkdir /var/log/nginx \
 	&& touch /var/log/nginx/access.log /var/log/nginx/error.log \
 	&& ln -sf /dev/stdout /var/log/nginx/access.log \
-	&& ln -sf /dev/stderr /var/log/nginx/error.log \
-	# Create directory for Let's Encrypt certificates
-	&& mkdir -p /etc/letsencrypt \
-	# Setup cron job for certificate renewal
-	&& mkdir -p /etc/periodic/weekly \
-	&& echo '#!/bin/sh\ncertbot renew --deploy-hook "nginx -s reload"' > /etc/periodic/weekly/certbot-renew \
-	&& chmod +x /etc/periodic/weekly/certbot-renew \
-	# Add a script to start both nginx and crond
-	&& echo '#!/bin/bash\n\
-	# Start cron daemon in background\n\
-	echo "Starting cron daemon..."\n\
-	crond -b -l 8\n\
-	\n\
-	# Check if we need to request initial certificates\n\
-	if [ -n "$CERTBOT_DOMAINS" ] && [ ! -f /etc/letsencrypt/live/$(echo $CERTBOT_DOMAINS | cut -d "," -f1)/fullchain.pem ]; then\n\
-	echo "Requesting initial Let'\''s Encrypt certificates for domains: $CERTBOT_DOMAINS"\n\
-	DOMAIN_ARGS=""\n\
-	for domain in $(echo $CERTBOT_DOMAINS | tr "," " "); do\n\
-	DOMAIN_ARGS="$DOMAIN_ARGS -d $domain"\n\
-	done\n\
-	\n\
-	# Request certificate with certbot\n\
-	if [ -n "$CERTBOT_EMAIL" ]; then\n\
-	certbot certonly --non-interactive --agree-tos --email $CERTBOT_EMAIL \\\n\
-	--webroot --webroot-path=/var/www/html $DOMAIN_ARGS\n\
-	else\n\
-	certbot certonly --non-interactive --agree-tos --register-unsafely-without-email \\\n\
-	--webroot --webroot-path=/var/www/html $DOMAIN_ARGS\n\
-	fi\n\
-	\n\
-	# Check if certificate was obtained successfully\n\
-	if [ $? -eq 0 ]; then\n\
-	echo "Successfully obtained Let'\''s Encrypt certificates"\n\
-	else\n\
-	echo "Failed to obtain Let'\''s Encrypt certificates"\n\
-	fi\n\
-	fi\n\
-	\n\
-	# Setup renewal cron job to run daily\n\
-	echo "Setting up certificate renewal cron job..."\n\
-	echo "0 0 * * * certbot renew --deploy-hook \"nginx -s reload\" --renew-hook \"echo Certificate renewed successfully at \$(date)\" --no-self-upgrade" > /etc/crontabs/nginx\n\
-	\n\
-	# Create webroot directory if it doesn'\''t exist\n\
-	mkdir -p /var/www/html\n\
-	\n\
-	# Create a simple index.html if it doesn'\''t exist\n\
-	if [ ! -f /var/www/html/index.html ]; then\n\
-	echo "<html><head><title>NGINX with HTTP/3</title></head><body><h1>NGINX with HTTP/3 Support</h1><p>This server is running NGINX with HTTP/3 (QUIC) support.</p></body></html>" > /var/www/html/index.html\n\
-	fi\n\
-	\n\
-	# Check if HTTP/3 is enabled\n\
-	echo "NGINX version and HTTP/3 status:"\n\
-	nginx -V 2>&1 | grep -o "with-http_v3_module"\n\
-	\n\
-	# Start nginx in foreground\n\
-	echo "Starting nginx..."\n\
-	exec nginx -g "daemon off;"\n\
-	' > /usr/local/bin/start.sh \
-	&& chmod +x /usr/local/bin/start.sh
+	&& ln -sf /dev/stderr /var/log/nginx/error.log
 
-# Copy configuration files directly into the image
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY ssl_common.conf /etc/nginx/conf.d/ssl_common.conf
-
-# Configuration files are now mounted as volumes in compose.yml instead of being copied here
-# - ./nginx.conf:/etc/nginx/nginx.conf:ro
-# - ./ssl_common.conf:/etc/nginx/conf.d/ssl_common.conf:ro
 
 # show env
 RUN env | sort
@@ -357,41 +321,35 @@ RUN njs -v
 # test the configuration
 RUN nginx -V; nginx -t
 
-EXPOSE 80 443 8080 8443
+EXPOSE 8080 8443
 
 STOPSIGNAL SIGTERM
 
-# Create directory for Let's Encrypt webroot verification
-RUN mkdir -p /var/www/html && chown -R nginx:nginx /var/www/html
-
-# Make sure nginx user can access Let's Encrypt certificates and run the renewal script
 # prepare to switching to non-root - update file permissions of directory containing
 # nginx.lock and nginx.pid file
 RUN \
 	chown -R --verbose nginx:nginx \
-	/var/run/nginx/ \
-	/etc/letsencrypt \
-	/usr/local/bin/start.sh \
-	/etc/periodic/weekly/certbot-renew
+	/var/run/nginx/
 
 # Install additional packages
 RUN apk add --no-cache \
 	vim \
+	curl \
+	bash \
 	bash-completion \
+	certbot \
+	certbot-nginx \
 	net-tools \
-	sudo
+	sudo \
+	python3 \
+	py3-pip \
+	&& pip3 install --no-cache-dir certbot-dns-godaddy
+
+# Copy DNS scripts
+COPY godaddy-dns-auth.sh /usr/local/bin/
+COPY godaddy-dns-cleanup.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/godaddy-dns-*
 
 USER nginx
+#CMD ["nginx", "-g", "daemon off;"]
 CMD ["/usr/local/bin/start.sh"]
-
-#LABEL \
-#	org.label-schema.build-date=$BUILD_DATE \
-#	org.label-schema.docker.cmd="docker run -d -p 8080:8080 -v \"$$(pwd)/jenkins-home:/var/jenkins_home\" -v /var/run/docker.sock:/var/run/docker.sock sudobmitch/jenkins-docker" \
-#	org.label-schema.description="Jenkins with docker support, Jenkins ${JENKINS_VER}, Docker ${DOCKER_VER}" \
-#	org.label-schema.name="bmitch3020/jenkins-docker" \
-#	org.label-schema.schema-version="1.0" \
-#	org.label-schema.url="https://github.com/sudo-bmitch/jenkins-docker" \
-#	org.label-schema.vcs-ref=$VCS_REF \
-#	org.label-schema.vcs-url="https://github.com/sudo-bmitch/jenkins-docker" \
-#	org.label-schema.vendor="Brandon Mitchell" \
-#	org.label-schema.version="${JENKINS_VER}-${IMAGE_PATCH_VER}"

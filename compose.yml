@@ -1,26 +1,33 @@
+version: '3.8'
+
 services:
   nginx:
-    image: braisenly/nginx-http3
+    #image: braisenly/nginx-h3:test
+    image: braisenly/nginx-h3
     container_name: nginx
+    env_file: .env
+    environment:
+      - CERTBOT_DOMAINS=${CERTBOT_DOMAINS}
+      - CERTBOT_EMAIL=${CERTBOT_EMAIL}
+      - CERTBOT_STAGING=${CERTBOT_STAGING}
+      - TZ=${TZ}
     ports:
       - "80:80"
-      - "443:443/tcp"
+      - "443:443"
       - "443:443/udp"
     volumes:
-      - ./conf.d/braisenly.conf:/etc/nginx/conf.d/braisenly.conf:ro
-      - ./nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./ssl_common.conf:/etc/nginx/conf.d/ssl_common.conf:ro
-      - ./snippets:/etc/nginx/snippets:ro
-      - ./tests:/static:ro
-      - ./tests/modules.conf:/etc/nginx/main.d/modules.conf:ro
-      - ./tests/perl_rewrite.conf:/etc/nginx/conf.d/perl_rewrite.conf:ro
-      - ./tests/static.conf:/etc/nginx/conf.d/static.conf:ro
-      - ./tests/https.conf:/etc/nginx/conf.d/https.conf:ro
-      - ./tests/njs.conf:/etc/nginx/conf.d/njs.conf:ro
-      - ./tests/njs:/opt/njs:ro
-      - ./tests/localhost.crt:/etc/nginx/ssl/localhost.crt:ro
-      - ./tests/localhost.key:/etc/nginx/ssl/localhost.key:ro
-    restart: unless-stopped
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./conf.d:/etc/nginx/conf.d
+      - ./ssl:/etc/nginx/ssl
+      - ./ssl_common.conf:/etc/nginx/conf.d/ssl_common.conf
+      - ./start.sh:/usr/local/bin/start.sh
+      - ./html/maintenance.html:/var/www/html/maintenance.html
+      - letsencrypt_certs:/etc/letsencrypt
+      - letsencrypt_www:/var/www/html
+      - letsencrypt_logs:/var/log/letsencrypt
+      - letsencrypt_lib:/var/lib/letsencrypt
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - web_network
     healthcheck:
@@ -29,7 +36,20 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+    restart: unless-stopped
+    user: root
+    command: ["/bin/bash", "/usr/local/bin/start.sh"]
+
+volumes:
+  letsencrypt_certs:
+    name: letsencrypt_certs
+  letsencrypt_www:
+    name: letsencrypt_www
+  letsencrypt_logs:
+    name: letsencrypt_logs
+  letsencrypt_lib:
+    name: letsencrypt_lib
 
 networks:
   web_network:
-    driver: bridge
+    name: web_network
