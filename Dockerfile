@@ -247,6 +247,7 @@ ENV NGINX_COMMIT=$NGINX_COMMIT
 
 RUN \
 	apk add --no-cache \
+	curl \
 	bash \
 	bash-completion \
 	busybox-suid \
