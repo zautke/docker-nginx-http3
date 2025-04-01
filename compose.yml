@@ -1,6 +1,5 @@
 services:
   nginx:
-    #image: braisenly/nginx-h3:test
     image: braisenly/nginx-h3
     container_name: nginx
     env_file: .env
@@ -14,19 +13,21 @@ services:
       - "443:443"
       - "443:443/udp"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./conf.d:/etc/nginx/conf.d
-      - ./ssl:/etc/nginx/ssl
-      - ./ssl_common.conf:/etc/nginx/conf.d/ssl_common.conf
-      - ./start.sh:/usr/local/bin/start.sh
+      - ./tests:/static:ro
+      - ./conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
+      - ./start.sh:/usr/local/bin/start.sh:ro
       - ./html/maintenance.html:/var/www/html/maintenance.html
-      - letsencrypt_certs:/etc/letsencrypt
-      - letsencrypt_www:/var/www/html
-      - letsencrypt_logs:/var/log/letsencrypt
-      - letsencrypt_lib:/var/lib/letsencrypt
+      - ./tests/localhost.crt:/etc/nginx/local/localhost.crt:ro
+      - ./tests/localhost.key:/etc/nginx/local/localhost.key:ro
+      - ./tests/njs:/opt/njs:ro
+      - letsencrypt_certs:/etc/letsencrypt:ro
+      - letsencrypt_logs:/var/log/letsencrypt:ro
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
+      - bkend_lab
+      - homepage_network
       - web_network
     healthcheck:
       test: ["CMD-SHELL", "nginx -t || exit 1"]
@@ -41,13 +42,13 @@ services:
 volumes:
   letsencrypt_certs:
     name: letsencrypt_certs
-  letsencrypt_www:
-    name: letsencrypt_www
   letsencrypt_logs:
     name: letsencrypt_logs
-  letsencrypt_lib:
-    name: letsencrypt_lib
 
 networks:
+  bkend_lab:
+    name: bkend_lab
+  homepage_network:
+    name: homepage_network
   web_network:
     name: web_network
