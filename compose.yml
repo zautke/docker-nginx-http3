@@ -18,8 +18,8 @@ services:
       - ./ssl:/etc/nginx/ssl:ro
       - ./start.sh:/usr/local/bin/start.sh:ro
       - ./html/maintenance.html:/var/www/html/maintenance.html
-      - ./tests/localhost.crt:/etc/nginx/local/localhost.crt:ro
-      - ./tests/localhost.key:/etc/nginx/local/localhost.key:ro
+      - ./local/localhost.crt:/etc/nginx/local/localhost.crt:ro
+      - ./local/localhost.key:/etc/nginx/local/localhost.key:ro
       - ./tests/njs:/opt/njs:ro
       - letsencrypt_certs:/etc/letsencrypt:ro
       - letsencrypt_logs:/var/log/letsencrypt:ro
