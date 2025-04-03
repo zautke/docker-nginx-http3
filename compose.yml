@@ -2,6 +2,8 @@ services:
   nginx:
     image: braisenly/nginx-h3:stable
     container_name: nginx
+    build:
+      context: .
     env_file: .env
     environment:
       - CERTBOT_DOMAINS=${CERTBOT_DOMAINS}

@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+#set -e
 
 # Define the webroot directory for certbot challenges.
 WEBROOT="/var/www/certbot"
