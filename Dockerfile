@@ -7,6 +7,9 @@ ARG NGINX_COMMIT=cfa2aef9a28c
 # https://github.com/google/ngx_brotli
 ARG NGX_BROTLI_COMMIT=a71f9312c2deb28875acc7bacfdd5695a111aa53
 
+# https://github.com/nginx/njs/releases/tag/0.8.7
+ARG NJS_COMMIT=ba6b9e157ef472dbcac17e32c55f3227daa3103c
+
 # https://github.com/openresty/headers-more-nginx-module#installation
 ARG HEADERS_MORE_VERSION=0.37
 
@@ -239,7 +242,9 @@ RUN \
 	&& touch /var/log/nginx/access.log /var/log/nginx/error.log \
 	&& ln -sf /dev/stdout /var/log/nginx/access.log \
 	&& ln -sf /dev/stderr /var/log/nginx/error.log \
+	#
 	# Create directory for Let's Encrypt certificates
+	#
 	&& mkdir -p /etc/letsencrypt \
 	# Setup cron job for certificate renewal
 	&& mkdir -p /etc/periodic/weekly \
