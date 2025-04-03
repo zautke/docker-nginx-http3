@@ -225,6 +225,8 @@ COPY --from=base /etc/ssl/dhparam.pem /etc/ssl/dhparam.pem
 
 COPY --from=base /usr/sbin/njs /usr/sbin/njs
 
+COPY start.sh /usr/local/bin/start.sh
+
 # hadolint ignore=SC2046
 RUN \
 	addgroup --gid $NGINX_GROUP_GID -S nginx \
