@@ -1,6 +1,6 @@
 services:
   nginx:
-    image: braisenly/nginx-h3
+    image: braisenly/nginx-h3:stable
     container_name: nginx
     env_file: .env
     environment:
@@ -22,7 +22,7 @@ services:
       - ./local/localhost.key:/etc/nginx/local/localhost.key:ro
       - ./tests/njs:/opt/njs:ro
       - letsencrypt_certs:/etc/letsencrypt:ro
-      - letsencrypt_logs:/var/log/letsencrypt:ro
+      - letsencrypt_logs:/var/log/letsencrypt:rw
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -48,6 +48,7 @@ volumes:
 networks:
   bkend_lab:
     name: bkend_lab
+    external: true
   homepage_network:
     name: homepage_network
   web_network:
