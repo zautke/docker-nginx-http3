@@ -299,6 +299,7 @@ RUN \
 # Copy configuration files directly into the image
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY ssl_common.conf /etc/nginx/conf.d/ssl_common.conf
+COPY start.sh /usr/local/bin/start.sh
 
 # show env
 RUN env | sort
