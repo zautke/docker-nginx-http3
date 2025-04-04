@@ -228,9 +228,6 @@ COPY --from=base /etc/ssl/dhparam.pem /etc/ssl/dhparam.pem
 
 COPY --from=base /usr/sbin/njs /usr/sbin/njs
 
-COPY start.sh /usr/local/bin/start.sh
-
-# hadolint ignore=SC2046
 RUN \
 	addgroup --gid $NGINX_GROUP_GID -S nginx \
 	&& adduser --uid $NGINX_USER_UID -D -S -h /var/cache/nginx -s /sbin/nologin -G nginx nginx \
@@ -241,72 +238,10 @@ RUN \
 	&& mkdir /var/log/nginx \
 	&& touch /var/log/nginx/access.log /var/log/nginx/error.log \
 	&& ln -sf /dev/stdout /var/log/nginx/access.log \
-	&& ln -sf /dev/stderr /var/log/nginx/error.log \
-	#
-	# Create directory for Let's Encrypt certificates
-	#
-	&& mkdir -p /etc/letsencrypt \
-	# Setup cron job for certificate renewal
-	&& mkdir -p /etc/periodic/weekly \
-	&& echo '#!/bin/sh\ncertbot renew --deploy-hook "nginx -s reload"' > /etc/periodic/weekly/certbot-renew \
-	&& chmod +x /etc/periodic/weekly/certbot-renew \
-	# Add a script to start both nginx and crond
-	&& echo '#!/bin/bash\n\
-	# Start cron daemon in background\n\
-	echo "Starting cron daemon..."\n\
-	crond -b -l 8\n\
-	\n\
-	# Check if we need to request initial certificates\n\
-	if [ -n "$CERTBOT_DOMAINS" ] && [ ! -f /etc/letsencrypt/live/$(echo $CERTBOT_DOMAINS | cut -d "," -f1)/fullchain.pem ]; then\n\
-	echo "Requesting initial Let'\''s Encrypt certificates for domains: $CERTBOT_DOMAINS"\n\
-	DOMAIN_ARGS=""\n\
-	for domain in $(echo $CERTBOT_DOMAINS | tr "," " "); do\n\
-	DOMAIN_ARGS="$DOMAIN_ARGS -d $domain"\n\
-	done\n\
-	\n\
-	# Request certificate with certbot\n\
-	if [ -n "$CERTBOT_EMAIL" ]; then\n\
-	certbot certonly --non-interactive --agree-tos --email $CERTBOT_EMAIL \\\n\
-	--webroot --webroot-path=/var/www/html $DOMAIN_ARGS\n\
-	else\n\
-	certbot certonly --non-interactive --agree-tos --register-unsafely-without-email \\\n\
-	--webroot --webroot-path=/var/www/html $DOMAIN_ARGS\n\
-	fi\n\
-	\n\
-	# Check if certificate was obtained successfully\n\
-	if [ $? -eq 0 ]; then\n\
-	echo "Successfully obtained Let'\''s Encrypt certificates"\n\
-	else\n\
-	echo "Failed to obtain Let'\''s Encrypt certificates"\n\
-	fi\n\
-	fi\n\
-	\n\
-	# Setup renewal cron job to run daily\n\
-	echo "Setting up certificate renewal cron job..."\n\
-	echo "0 0 * * * certbot renew --deploy-hook \"nginx -s reload\" --renew-hook \"echo Certificate renewed successfully at \$(date)\" --no-self-upgrade" > /etc/crontabs/nginx\n\
-	\n\
-	# Create webroot directory if it doesn'\''t exist\n\
-	mkdir -p /var/www/html\n\
-	\n\
-	# Create a simple index.html if it doesn'\''t exist\n\
-	if [ ! -f /var/www/html/index.html ]; then\n\
-	echo "<html><head><title>NGINX with HTTP/3</title></head><body><h1>NGINX with HTTP/3 Support</h1><p>This server is running NGINX with HTTP/3 (QUIC) support.</p></body></html>" > /var/www/html/index.html\n\
-	fi\n\
-	\n\
-	# Check if HTTP/3 is enabled\n\
-	echo "NGINX version and HTTP/3 status:"\n\
-	nginx -V 2>&1 | grep -o "with-http_v3_module"\n\
-	\n\
-	# Start nginx in foreground\n\
-	echo "Starting nginx..."\n\
-	exec nginx -g "daemon off;"\n\
-	' > /usr/local/bin/start.sh \
-	&& chmod +x /usr/local/bin/start.sh
+	&& ln -sf /dev/stderr /var/log/nginx/error.log
 
-# Copy configuration files directly into the image
 COPY nginx.conf /etc/nginx/nginx.conf
 COPY ssl_common.conf /etc/nginx/conf.d/ssl_common.conf
-COPY start.sh /usr/local/bin/start.sh
 
 # show env
 RUN env | sort
@@ -317,22 +252,10 @@ RUN /usr/sbin/njs -v || echo "NJS dummy version check"
 # test the configuration
 RUN nginx -V; nginx -t
 
-EXPOSE 80 443
+EXPOSE 80 443 8888 8889
 
 STOPSIGNAL SIGTERM
 
-# Create directory for Let's Encrypt webroot verification
-RUN mkdir -p /var/www/html && chown -R nginx:nginx /var/www/html
-
-# Make sure nginx user can access Let's Encrypt certificates and run the renewal script
-# prepare to switching to non-root - update file permissions of directory containing
-# nginx.lock and nginx.pid file
-RUN \
-	chown -R --verbose nginx:nginx \
-	/var/run/nginx/ \
-	/etc/letsencrypt \
-	/usr/local/bin/start.sh \
-	/etc/periodic/weekly/certbot-renew
-
 USER nginx
-CMD ["/usr/local/bin/start.sh"]
+CMD [ "nginx", "-g", "daemon off;" ]
+#CMD ["/usr/local/bin/start.sh"]

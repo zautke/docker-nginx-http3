@@ -18,12 +18,12 @@ services:
       - ./tests:/static:ro
       - ./conf.d:/etc/nginx/conf.d:ro
       - ./ssl:/etc/nginx/ssl:ro
-      - ./start.sh:/usr/local/bin/start.sh:ro
       - ./html/maintenance.html:/var/www/html/maintenance.html
       - ./local/localhost.crt:/etc/nginx/local/localhost.crt:ro
       - ./local/localhost.key:/etc/nginx/local/localhost.key:ro
-      - ./tests/njs:/opt/njs:ro
-      - letsencrypt_certs:/etc/letsencrypt:rw
+      - ./tests/njs:/opt/njs:rw
+      - ./certbot/conf:/etc/letsencrypt:rw
+      - ./certbot/www:/var/www/certbot:rw
       - letsencrypt_logs:/var/log/letsencrypt:rw
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -39,11 +39,10 @@ services:
       start_period: 15s
     restart: unless-stopped
     user: root
-    command: ["/bin/bash", "/usr/local/bin/start.sh"]
+    #command: ["nginx", "-g", "daemon-off"]
 
 volumes:
-  letsencrypt_certs:
-    name: letsencrypt_certs
+  certbot: 
   letsencrypt_logs:
     name: letsencrypt_logs
 
