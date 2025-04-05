@@ -1,10 +1,9 @@
-version: '3.8'
-
 services:
   nginx:
-    #image: braisenly/nginx-h3:test
-    image: braisenly/nginx-h3
+    image: braisenly/nginx-h3:stable
     container_name: nginx
+    build:
+      context: .
     env_file: .env
     environment:
       - CERTBOT_DOMAINS=${CERTBOT_DOMAINS}
@@ -16,40 +15,42 @@ services:
       - "443:443"
       - "443:443/udp"
     volumes:
-      - ./nginx.conf:/etc/nginx/nginx.conf
-      - ./conf.d:/etc/nginx/conf.d
-      - ./ssl:/etc/nginx/ssl
-      - ./ssl_common.conf:/etc/nginx/conf.d/ssl_common.conf
-      - ./start.sh:/usr/local/bin/start.sh
+      - ./tests:/static:ro
+      - ./conf.d:/etc/nginx/conf.d:ro
+      - ./ssl:/etc/nginx/ssl:ro
       - ./html/maintenance.html:/var/www/html/maintenance.html
-      - letsencrypt_certs:/etc/letsencrypt
-      - letsencrypt_www:/var/www/html
-      - letsencrypt_logs:/var/log/letsencrypt
-      - letsencrypt_lib:/var/lib/letsencrypt
+      - ./local/localhost.crt:/etc/nginx/local/localhost.crt:ro
+      - ./local/localhost.key:/etc/nginx/local/localhost.key:ro
+      - ./tests/njs:/opt/njs:rw
+      - ./certbot/conf:/etc/letsencrypt:rw
+      - ./certbot/www:/var/www/certbot:rw
+      - letsencrypt_logs:/var/log/letsencrypt:rw
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
+      - bkend_lab
+      - homepage_network
       - web_network
     healthcheck:
-      test: ["CMD-SHELL", "wget -q --spider http://localhost:80/health || exit 1"]
+      test: ["CMD-SHELL", "nginx -t || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
     restart: unless-stopped
     user: root
-    command: ["/bin/bash", "/usr/local/bin/start.sh"]
+    #command: ["nginx", "-g", "daemon-off"]
 
 volumes:
-  letsencrypt_certs:
-    name: letsencrypt_certs
-  letsencrypt_www:
-    name: letsencrypt_www
+  certbot: 
   letsencrypt_logs:
     name: letsencrypt_logs
-  letsencrypt_lib:
-    name: letsencrypt_lib
 
 networks:
+  bkend_lab:
+    name: bkend_lab
+    external: true
+  homepage_network:
+    name: homepage_network
   web_network:
     name: web_network

@@ -2,7 +2,7 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ master ]
+    branches: [ release ]
   pull_request:
 
 jobs:
@@ -12,7 +12,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
-    
+
     # https://github.com/FiloSottile/mkcert#installation
     - name: Install and setup mkcert
       env:
@@ -37,9 +37,9 @@ jobs:
       uses: docker/build-push-action@v6
       with:
         context: .
-        tags: macbre/nginx
+        tags: braisenly/nginx-h3
         cache-from: |
-          ghcr.io/macbre/nginx-http3:latest
+          ghcr.io/zautke/nginx-http3:latest
 
     - name: Lint the Dockerfile
       uses: hadolint/hadolint-action@v3.1.0
@@ -52,12 +52,12 @@ jobs:
 
     - name: Are we running as non-root?
       run: |
-        docker run --rm -t macbre/nginx whoami | grep nginx
+        docker run --rm -t braisenly/nginx-h3 whoami | grep nginx
 
     - name: Run nginx -V and njs -v
       run: |
-        docker run --rm -t macbre/nginx nginx -V | sed 's/\-\-/\n\t--/g' | tee
-        echo "njs v$(docker run -t macbre/nginx njs -v)"
+        docker run --rm -t braisenly/nginx-h3 nginx -V | sed 's/\-\-/\n\t--/g' | tee
+        echo "njs v$(docker run -t braisenly/nginx-h3 njs -v)"
 
     - name: Serve a static asset
       run: |
@@ -110,7 +110,7 @@ jobs:
 
     - name: Test njs command line
       run: |
-        echo "console.log('Using njs v' + njs.version)" | docker run -i --rm macbre/nginx njs -q - | grep "Using njs v0.8.7"
+        echo "console.log('Using njs v' + njs.version)" | docker run -i --rm braisenly/nginx-h3 njs -q - | grep "Using njs v0.8.7"
 
     - name: Show logs
       if: always()

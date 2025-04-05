@@ -1,1 +1,6 @@
 *.swp
+*.bak
+*.log
+
+ssl/
+certbot*/
